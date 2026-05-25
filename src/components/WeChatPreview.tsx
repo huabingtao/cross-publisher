@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { compileMarkdownToWechat } from '../utils/markdown';
-import { copyHtmlToClipboard } from '../utils/clipboard';
-import { wechatThemes } from '../themes/wechatThemes';
+import { copyHtmlToClipboardWithJuice } from '../utils/clipboard';
+import { wechatThemes, mapThemeId, baseCSSContent } from '../themes/wechatThemes';
+import { wrapCSSWithScope, themeInjector } from '../utils/themeManager';
 import { Clipboard, Check, Sparkles } from 'lucide-react';
 
 interface WeChatPreviewProps {
@@ -12,13 +13,35 @@ interface WeChatPreviewProps {
 
 export function WeChatPreview({ content, themeId, onThemeChange }: WeChatPreviewProps) {
   const [copied, setCopied] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
   
-  // 编译获取带有 inline style 的微信 HTML
-  const compiledHtml = compileMarkdownToWechat(content, themeId);
+  // 转换兼容性的主题ID
+  const mappedThemeId = mapThemeId(themeId);
+
+  // 编译获取微信预览的 HTML (包含基础类名)
+  const compiledHtml = compileMarkdownToWechat(content, mappedThemeId);
+
+  // 当主题发生变化时，动态注入该主题对应的作用域 CSS
+  useEffect(() => {
+    const theme = wechatThemes.find(t => t.id === mappedThemeId) || wechatThemes[0];
+    const fullCSS = baseCSSContent + '\n' + theme.css;
+    const scopedCSS = wrapCSSWithScope(fullCSS, '.wechat-preview-container');
+    themeInjector.inject(scopedCSS);
+  }, [mappedThemeId]);
 
   const handleCopy = async () => {
-    // plainText 用作备用剪贴板格式
-    const success = await copyHtmlToClipboard(compiledHtml, content);
+    if (!previewRef.current) return;
+
+    const theme = wechatThemes.find(t => t.id === mappedThemeId) || wechatThemes[0];
+    const fullCSS = baseCSSContent + '\n' + theme.css;
+
+    // 执行 Juice 样式内联与净化复制
+    const success = await copyHtmlToClipboardWithJuice(
+      previewRef.current,
+      fullCSS,
+      theme.primaryColor
+    );
+
     if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -35,7 +58,7 @@ export function WeChatPreview({ content, themeId, onThemeChange }: WeChatPreview
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 font-medium">排版主题:</span>
           <select
-            value={themeId}
+            value={mappedThemeId}
             onChange={(e) => onThemeChange(e.target.value)}
             className="text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
           >
@@ -79,6 +102,7 @@ export function WeChatPreview({ content, themeId, onThemeChange }: WeChatPreview
       {/* 预览展示区 */}
       <div className="flex-1 p-6 overflow-y-auto bg-gray-50/50">
         <div 
+          ref={previewRef}
           className="wechat-preview-container bg-white p-8 rounded-lg shadow-sm border border-gray-100 min-h-full max-w-[677px] mx-auto select-text"
           style={{ wordBreak: 'break-all' }}
           dangerouslySetInnerHTML={{ __html: compiledHtml }}

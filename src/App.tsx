@@ -41,7 +41,7 @@ const DEFAULT_AUTHOR = {
 
 function App() {
   const [content, setContent] = useLocalStorage<string>('publisher_content_v1', DEFAULT_CONTENT);
-  const [wechatThemeId, setWechatThemeId] = useLocalStorage<string>('wechat_theme_id_v1', 'macaron-green');
+  const [wechatThemeId, setWechatThemeId] = useLocalStorage<string>('wechat_theme_id_v1', 'default');
   const [xhsThemeId, setXhsThemeId] = useLocalStorage<string>('xhs_theme_id_v1', 'gradient-pink');
   const [authorInfo, setAuthorInfo] = useLocalStorage<{ name: string; avatar: string }>('author_info_v1', DEFAULT_AUTHOR);
   
@@ -62,7 +62,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans select-none text-gray-800">
+    <div className="h-screen bg-gray-50 flex flex-col font-sans select-none text-gray-800 overflow-hidden">
       
       {/* 头部导航导航栏 */}
       <header className="bg-white border-b border-gray-200/80 px-6 py-4 flex justify-between items-center shrink-0 shadow-xs z-10">

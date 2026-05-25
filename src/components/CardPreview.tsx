@@ -176,7 +176,7 @@ export function CardPreview({
               >
                 {/* 页眉 */}
                 <div className="flex items-center gap-4">
-                  <img src={authorInfo.avatar} className="w-16 h-16 rounded-full border-2 border-white/50" />
+                  <img src={authorInfo.avatar} crossOrigin="anonymous" className="w-16 h-16 rounded-full border-2 border-white/50" />
                   <span className="font-extrabold text-2xl tracking-wide">{authorInfo.name}</span>
                 </div>
 
@@ -214,7 +214,7 @@ export function CardPreview({
                 >
                   {/* 页眉 */}
                   <div className="flex items-center gap-2">
-                    <img src={authorInfo.avatar} className="w-6 h-6 rounded-full border border-white/50" />
+                    <img src={authorInfo.avatar} crossOrigin="anonymous" className="w-6 h-6 rounded-full border border-white/50" />
                     <span className="font-bold text-[10px] tracking-wide">{authorInfo.name}</span>
                   </div>
 
