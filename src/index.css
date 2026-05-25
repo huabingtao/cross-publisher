@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* 可以在这里添加一些项目的全局基本样式覆盖 */
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  background-color: #f9fafb;
+}
+
+/* 微信排版专用的自定义重置样式，以防外部全局样式污染 */
+.wechat-preview-container * {
+  box-sizing: border-box;
+}
+
+/* 微信编辑器代码高亮适配 */
+.wechat-code-block {
+  font-family: ui-monospace, Consolas, "Andale Mono", "Ubuntu Mono", monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  padding: 16px;
+  overflow: auto;
+  margin: 1.5em 0;
+}
