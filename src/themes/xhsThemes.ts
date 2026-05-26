@@ -8,6 +8,7 @@ export interface XhsTheme {
   fontFamily: string;
   borderColor?: string;
   cardStyle?: React.CSSProperties;
+  primaryColor: string;
 }
 
 export const xhsThemes: XhsTheme[] = [
@@ -19,6 +20,7 @@ export const xhsThemes: XhsTheme[] = [
     titleColor: 'text-indigo-900',
     accentColor: 'bg-indigo-600/10 text-indigo-600 border-indigo-200',
     fontFamily: 'font-sans',
+    primaryColor: '#4f46e5',
   },
   {
     id: 'minimalist-white',
@@ -29,6 +31,7 @@ export const xhsThemes: XhsTheme[] = [
     accentColor: 'bg-stone-200/50 text-stone-700 border-stone-300',
     fontFamily: 'font-serif',
     borderColor: 'border border-stone-300/60 shadow-inner',
+    primaryColor: '#44403c',
   },
   {
     id: 'tech-dark',
@@ -38,6 +41,7 @@ export const xhsThemes: XhsTheme[] = [
     titleColor: 'text-emerald-400',
     accentColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
     fontFamily: 'font-mono',
+    primaryColor: '#34d399',
   },
   {
     id: 'vintage-yellow',
@@ -48,5 +52,6 @@ export const xhsThemes: XhsTheme[] = [
     accentColor: 'bg-amber-900/10 text-amber-900 border-amber-950/20',
     fontFamily: 'font-serif',
     borderColor: 'border-2 border-dashed border-amber-900/30',
+    primaryColor: '#78350f',
   }
 ];

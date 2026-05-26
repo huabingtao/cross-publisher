@@ -2,34 +2,26 @@ import { useState } from 'react';
 import { xhsThemes } from '../themes/xhsThemes';
 import { compileSimpleMarkdown } from '../utils/markdown';
 import { exportAllCards } from '../utils/exporter';
-import { Download, Smartphone, LayoutGrid, Award, RefreshCw } from 'lucide-react';
+import { Download, RefreshCw } from 'lucide-react';
+import { EmptyState } from './EmptyState';
 
 interface CardPreviewProps {
   slides: string[];
   themeId: string;
   onThemeChange: (id: string) => void;
-  authorInfo: { name: string; avatar: string };
-  onAuthorChange: (info: { name: string; avatar: string }) => void;
-  activePlatform: 'xhs' | 'douyin';
-  onPlatformChange: (platform: 'xhs' | 'douyin') => void;
 }
 
 export function CardPreview({
   slides,
   themeId,
-  onThemeChange,
-  authorInfo,
-  onAuthorChange,
-  activePlatform,
-  onPlatformChange
+  onThemeChange
 }: CardPreviewProps) {
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
-  const [editAuthor, setEditAuthor] = useState(false);
 
   const currentTheme = xhsThemes.find(t => t.id === themeId) || xhsThemes[0];
-  const aspectClass = activePlatform === 'xhs' ? 'aspect-[3/4]' : 'aspect-[9/16]';
-  const platformLabel = activePlatform === 'xhs' ? '小红书 (3:4)' : '抖音图文 (9:16)';
+  const aspectClass = 'aspect-[3/4]';
+  const platformLabel = '图文卡片 (3:4)';
 
   const handleExport = async () => {
     if (slides.length === 0) return;
@@ -50,27 +42,6 @@ export function CardPreview({
     <div className="flex flex-col h-full bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
       {/* 顶部控制栏 */}
       <div className="flex flex-wrap gap-3 items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
-        {/* 平台切换 */}
-        <div className="flex bg-gray-200 p-0.5 rounded-lg">
-          <button
-            onClick={() => onPlatformChange('xhs')}
-            className={`flex items-center gap-1 px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-              activePlatform === 'xhs' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>小红书</span>
-          </button>
-          <button
-            onClick={() => onPlatformChange('douyin')}
-            className={`flex items-center gap-1 px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-              activePlatform === 'douyin' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>抖音</span>
-          </button>
-        </div>
 
         {/* 主题选择 */}
         <div className="flex items-center gap-2">
@@ -112,115 +83,74 @@ export function CardPreview({
         </button>
       </div>
 
-      {/* 作者栏配置与卡片列表 */}
-      <div className="flex-1 flex flex-col overflow-y-auto bg-gray-50/50 p-6">
-        
-        {/* 作者信息编辑区 */}
-        <div className="max-w-md mx-auto w-full mb-6 bg-white p-4 rounded-xl border border-gray-200/60 shadow-sm">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-xs font-bold text-gray-700 flex items-center gap-1">
-              <Award className="w-4 h-4 text-indigo-500" />
-              水印与IP配置
-            </span>
-            <button
-              onClick={() => setEditAuthor(!editAuthor)}
-              className="text-xxs text-indigo-600 font-semibold hover:underline"
-            >
-              {editAuthor ? '保存' : '修改配置'}
-            </button>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <img src={authorInfo.avatar} className="w-10 h-10 rounded-full border border-gray-200" alt="Avatar" />
-            <div>
-              <div className="text-xs font-bold text-gray-800">{authorInfo.name}</div>
-              <div className="text-xxs text-gray-400">页眉展示 IP 水印</div>
-            </div>
-          </div>
+      {/* 卡片列表 */}
+      <div className={`flex-1 flex flex-col overflow-y-auto bg-gray-50/50 p-6 ${slides.length === 0 ? 'justify-center' : ''}`}>
 
-          {editAuthor && (
-            <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="作者昵称"
-                  value={authorInfo.name}
-                  onChange={(e) => onAuthorChange({ ...authorInfo, name: e.target.value })}
-                  className="flex-1 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-                <input
-                  type="text"
-                  placeholder="头像图片URL"
-                  value={authorInfo.avatar}
-                  onChange={(e) => onAuthorChange({ ...authorInfo, avatar: e.target.value })}
-                  className="flex-1 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-              <span className="text-[10px] text-gray-400">提示：头像推荐使用支持跨域的 HTTPS 图床 URL。</span>
-            </div>
-          )}
-        </div>
-
-        {/* 隐藏的真实分辨率渲染挂载区 (1200px x 1600px / 9:16) */}
+        {/* 隐藏的真实分辨率渲染挂载区 (1200px x 1600px) */}
         {/* 必须正常渲染并移出视口，否则 html2canvas 无法生成 */}
-        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
-          {slides.map((content, index) => {
-            const width = 1200;
-            const height = activePlatform === 'xhs' ? 1600 : 2133; // 3:4 vs 9:16
-            return (
-              <div
-                key={index}
-                id={`xhs-card-render-${index}`}
-                style={{ width: `${width}px`, height: `${height}px` }}
-                className={`bg-gradient-to-br ${currentTheme.bgGradient} ${currentTheme.textColor} p-16 flex flex-col justify-between overflow-hidden relative ${currentTheme.borderColor || ''}`}
-              >
-                {/* 页眉 */}
-                <div className="flex items-center gap-4">
-                  <img src={authorInfo.avatar} crossOrigin="anonymous" className="w-16 h-16 rounded-full border-2 border-white/50" />
-                  <span className="font-extrabold text-2xl tracking-wide">{authorInfo.name}</span>
-                </div>
+        {slides.length > 0 && (
+          <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+            {slides.map((content, index) => {
+              const width = 1200;
+              const height = 1600; // 3:4
+              return (
+                <div
+                  key={index}
+                  id={`xhs-card-render-${index}`}
+                  style={{ 
+                    width: `${width}px`, 
+                    height: `${height}px`,
+                    padding: '75px' // 24px * 3.125
+                  }}
+                  className={`bg-gradient-to-br ${currentTheme.bgGradient} ${currentTheme.textColor} flex flex-col justify-between overflow-hidden relative ${currentTheme.borderColor || ''}`}
+                >
 
-                {/* 内容 */}
-                <div className={`flex-1 flex flex-col justify-center my-12 text-4xl leading-relaxed card-content-render-body ${currentTheme.fontFamily}`}>
-                  <SlideRenderer content={content} />
-                </div>
+                  {/* 内容 */}
+                  <div 
+                    style={{
+                      marginTop: '37.5px', // 12px * 3.125
+                      marginBottom: '37.5px' // 12px * 3.125
+                    }}
+                    className={`flex-1 flex flex-col justify-center card-content-render-body ${currentTheme.fontFamily}`}
+                  >
+                    <SlideRenderer content={content} themeId={themeId} />
+                  </div>
 
-                {/* 页脚 */}
-                <div className="flex justify-between items-center text-gray-500/80 text-2xl border-t border-gray-400/20 pt-6">
-                  <span className="font-semibold">#干货分享</span>
-                  <span className="font-mono font-bold">{index + 1} / {slides.length}</span>
+                  {/* 页脚 */}
+                  <div 
+                    style={{ 
+                      paddingTop: '25px', // 8px * 3.125
+                      fontSize: '31.25px', // 10px * 3.125
+                      borderTopWidth: '3.125px'
+                    }}
+                    className="flex justify-between items-center text-gray-500/80 border-t border-gray-400/20"
+                  >
+                    <span className="font-semibold">#干货分享</span>
+                    <span className="font-mono font-bold">{index + 1} / {slides.length}</span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* 视口展示区：缩略图列表（自适应屏幕宽度） */}
         {slides.length === 0 ? (
-          <div className="flex-1 flex flex-col justify-center items-center text-center p-8 bg-white border border-dashed border-gray-300 rounded-xl">
-            <LayoutGrid className="w-12 h-12 text-gray-350 mb-3" />
-            <p className="text-sm font-semibold text-gray-600">暂无卡片预览</p>
-            <p className="text-xs text-gray-400 mt-1">在左侧输入内容，或者使用「---」增加分页线。</p>
-          </div>
+          <EmptyState />
         ) : (
           <div className="flex flex-col gap-6 max-w-sm mx-auto w-full pb-8">
             {slides.map((content, index) => (
               <div key={index} className="flex flex-col gap-2">
                 <div className="text-xxs font-bold text-gray-400 ml-1">SLIDE {index + 1} ({platformLabel})</div>
                 
-                {/* 3:4 / 9:16 卡片模拟缩略图 */}
+                {/* 3:4 卡片模拟缩略图 */}
                 <div
                   className={`w-full ${aspectClass} rounded-2xl bg-gradient-to-br ${currentTheme.bgGradient} ${currentTheme.textColor} p-6 flex flex-col justify-between shadow-md border border-gray-100 relative ${currentTheme.borderColor || ''}`}
                 >
-                  {/* 页眉 */}
-                  <div className="flex items-center gap-2">
-                    <img src={authorInfo.avatar} crossOrigin="anonymous" className="w-6 h-6 rounded-full border border-white/50" />
-                    <span className="font-bold text-[10px] tracking-wide">{authorInfo.name}</span>
-                  </div>
 
                   {/* 缩略图正文内容自适应缩放 */}
-                  <div className={`flex-1 flex flex-col justify-center my-3 text-[14px] leading-relaxed card-content-thumbnail-body ${currentTheme.fontFamily}`}>
-                    <SlideRenderer content={content} isThumbnail />
+                  <div className={`flex-1 flex flex-col justify-center my-3 card-content-thumbnail-body ${currentTheme.fontFamily}`}>
+                    <SlideRenderer content={content} isThumbnail themeId={themeId} />
                   </div>
 
                   {/* 页脚 */}
@@ -240,8 +170,9 @@ export function CardPreview({
 }
 
 // 卡片内容渲染子组件
-function SlideRenderer({ content, isThumbnail = false }: { content: string; isThumbnail?: boolean }) {
+function SlideRenderer({ content, isThumbnail = false, themeId }: { content: string; isThumbnail?: boolean; themeId: string }) {
   const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const currentTheme = xhsThemes.find(t => t.id === themeId) || xhsThemes[0];
   // 封面识别逻辑：如果首行是 # H1，且整页内容行数 <= 2 行，则为封面样式
   const isCover = lines[0]?.startsWith('# ') && lines.length <= 2;
 
@@ -250,11 +181,22 @@ function SlideRenderer({ content, isThumbnail = false }: { content: string; isTh
     const subtitle = lines[1] || '';
     return (
       <div className="flex-1 flex flex-col justify-center items-center text-center p-2">
-        <h1 className={`font-black leading-tight tracking-tight text-center ${isThumbnail ? 'text-lg mb-1' : 'text-5xl mb-4'} text-balance`}>
+        <h1 
+          className="font-black leading-tight tracking-tight text-center text-balance"
+          style={{
+            fontSize: isThumbnail ? '24px' : '75px', // 24px * 3.125 = 75px
+            marginBottom: isThumbnail ? '8px' : '25px' // 8px * 3.125 = 25px
+          }}
+        >
           {title}
         </h1>
         {subtitle && (
-          <p className={`font-semibold opacity-85 ${isThumbnail ? 'text-xs' : 'text-2xl'}`}>
+          <p 
+            className="font-semibold opacity-85"
+            style={{
+              fontSize: isThumbnail ? '14px' : '43.75px' // 14px * 3.125 = 43.75px
+            }}
+          >
             {subtitle}
           </p>
         )}
@@ -264,37 +206,136 @@ function SlideRenderer({ content, isThumbnail = false }: { content: string; isTh
 
   // 正常内容卡片，解析 Markdown HTML
   const html = compileSimpleMarkdown(content);
+  const blockquoteBg = currentTheme.id === 'tech-dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)';
 
   // 注入微调的渲染样式
   return (
     <div
       className={`flex-1 flex flex-col justify-center text-left select-none max-w-full overflow-hidden ${
-        isThumbnail ? 'thumbnail-renderer gap-1' : 'render-renderer gap-4'
+        isThumbnail ? 'thumbnail-renderer' : 'render-renderer'
       }`}
       style={{
-        // 缩略图下对字体大小和列表样式进行重置，防内容溢出
-        fontSize: isThumbnail ? '9px' : 'inherit',
-        lineHeight: isThumbnail ? '1.3' : 'inherit'
+        fontSize: isThumbnail ? '15px' : '46.875px', // 15px * 3.125 = 46.875px
+        lineHeight: '1.5',
+        gap: isThumbnail ? '6px' : '18.75px', // 6px * 3.125 = 18.75px
+        ['--md-primary-color' as any]: currentTheme.primaryColor,
+        ['--blockquote-background' as any]: blockquoteBg,
       }}
     >
       <style dangerouslySetInnerHTML={{ __html: `
-        .render-renderer h2 { font-size: 2.25rem; font-weight: 800; margin-bottom: 1rem; color: inherit; }
-        .render-renderer h3 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.8rem; color: inherit; }
-        .render-renderer p { margin-bottom: 0.8rem; }
-        .render-renderer ul { list-style-type: disc; padding-left: 2rem; margin: 0.8rem 0; }
-        .render-renderer ol { list-style-type: decimal; padding-left: 2rem; margin: 0.8rem 0; }
-        .render-renderer li { margin: 0.4rem 0; }
-        .render-renderer blockquote { border-left: 6px solid currentColor; padding-left: 1rem; opacity: 0.8; font-style: italic; margin: 1rem 0; }
-        .render-renderer strong { font-weight: bold; }
-        
-        .thumbnail-renderer h2 { font-size: 11px; font-weight: 800; margin-bottom: 0.2rem; }
-        .thumbnail-renderer h3 { font-size: 10px; font-weight: 700; margin-bottom: 0.2rem; }
-        .thumbnail-renderer p { margin-bottom: 0.2rem; }
-        .thumbnail-renderer ul { list-style-type: disc; padding-left: 1rem; margin: 0.2rem 0; }
-        .thumbnail-renderer ol { list-style-type: decimal; padding-left: 1rem; margin: 0.2rem 0; }
-        .thumbnail-renderer li { margin: 0.1rem 0; }
-        .thumbnail-renderer blockquote { border-left: 2px solid currentColor; padding-left: 0.4rem; font-style: italic; margin: 0.2rem 0; }
-        .thumbnail-renderer strong { font-weight: bold; }
+        .render-renderer, .thumbnail-renderer {
+          --md-font-size: ${isThumbnail ? '15px' : '46.875px'};
+        }
+
+        /* 一级标题 - 复制自公众号 */
+        .render-renderer h1, .thumbnail-renderer h1 {
+          display: table;
+          padding: 0 1em;
+          border-bottom: 0.13em solid var(--md-primary-color);
+          margin: 1.5em auto 0.8em;
+          font-size: calc(var(--md-font-size) * 1.25);
+          font-weight: bold;
+          text-align: center;
+          color: inherit;
+        }
+
+        /* 二级标题 - 复制自公众号 */
+        .render-renderer h2, .thumbnail-renderer h2 {
+          display: table;
+          padding: 0 0.4em;
+          margin: 1.5em auto 0.8em;
+          color: #fff;
+          background: var(--md-primary-color);
+          font-size: calc(var(--md-font-size) * 1.2);
+          font-weight: bold;
+          text-align: center;
+          border-radius: 0.25em;
+        }
+
+        .render-renderer h2 strong, .thumbnail-renderer h2 strong {
+          color: inherit !important;
+        }
+
+        /* 三级标题 - 复制自公众号 */
+        .render-renderer h3, .thumbnail-renderer h3 {
+          padding-left: 0.5em;
+          border-left: 0.2em solid var(--md-primary-color);
+          margin: 1.2em 0 0.6em;
+          font-size: calc(var(--md-font-size) * 1.15);
+          font-weight: bold;
+          line-height: 1.2;
+          text-align: left;
+          color: inherit;
+        }
+
+        /* 四五六级标题 - 复制自公众号 */
+        .render-renderer h4, .thumbnail-renderer h4,
+        .render-renderer h5, .thumbnail-renderer h5,
+        .render-renderer h6, .thumbnail-renderer h6 {
+          margin: 1.2em 0 0.6em;
+          color: var(--md-primary-color);
+          font-size: var(--md-font-size);
+          font-weight: bold;
+        }
+
+        /* 段落 - 复制自公众号 */
+        .render-renderer p, .thumbnail-renderer p {
+          margin: 0.8em 0;
+          letter-spacing: 0.05em;
+          font-size: var(--md-font-size);
+          line-height: 1.6;
+          color: inherit;
+        }
+
+        /* 引用块 - 复制自公众号 */
+        .render-renderer blockquote, .thumbnail-renderer blockquote {
+          font-style: normal;
+          padding: 0.8em 1em;
+          border-left: 0.25em solid var(--md-primary-color);
+          border-radius: 0.38em;
+          color: inherit;
+          background: var(--blockquote-background);
+          margin: 0.8em 0;
+        }
+
+        .render-renderer blockquote > p, .thumbnail-renderer blockquote > p {
+          display: block;
+          font-size: var(--md-font-size);
+          color: inherit;
+          margin: 0;
+        }
+
+        /* 强调加粗 - 复制自公众号 */
+        .render-renderer strong, .thumbnail-renderer strong {
+          color: var(--md-primary-color);
+          font-weight: bold;
+        }
+
+        /* 列表 - 复制自公众号 */
+        .render-renderer ul, .thumbnail-renderer ul {
+          list-style-type: circle;
+          padding-left: 1.5em;
+          margin: 0.8em 0;
+        }
+        .render-renderer ol, .thumbnail-renderer ol {
+          list-style-type: decimal;
+          padding-left: 1.5em;
+          margin: 0.8em 0;
+        }
+        .render-renderer li, .thumbnail-renderer li {
+          margin: 0.3em 0;
+          font-size: var(--md-font-size);
+          color: inherit;
+        }
+
+        /* 行内代码 */
+        .render-renderer code, .thumbnail-renderer code {
+          font-size: 90%;
+          color: #d14;
+          background: rgba(27, 31, 35, 0.05);
+          padding: 3px 5px;
+          border-radius: 0.25em;
+        }
       `}} />
       <div dangerouslySetInnerHTML={{ __html: html }} />
     </div>

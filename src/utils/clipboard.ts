@@ -1,5 +1,6 @@
 import juice from 'juice';
 import hljsCSS from 'highlight.js/styles/github.css?raw';
+import { processCSS } from './themeManager';
 
 export async function copyHtmlToClipboard(html: string, plainText: string): Promise<boolean> {
   try {
@@ -94,35 +95,51 @@ export async function copyHtmlToClipboardWithJuice(
   themeCSS: string,
   primaryColor: string
 ): Promise<boolean> {
-  const originalHtml = element.innerHTML;
-  const originalText = element.textContent || '';
-
   try {
-    // 1. 处理 CSS，移除作用域前缀供 juice 使用
+    // 1. 克隆 DOM 节点到内存中，避免在屏幕上直接修改触发重绘和闪烁
+    const clone = element.cloneNode(true) as HTMLElement;
+    const originalText = element.textContent || '';
+
+    // 2. 处理 CSS，移除作用域前缀供 juice 使用
     let cleanThemeCSS = themeCSS
       .replace(/#output\s*\{/g, 'body {')
       .replace(/#output\s+/g, '')
       .replace(/^#output\s*/gm, '');
 
-    const styleBlock = `<style>${cleanThemeCSS}</style><style>${hljsCSS}</style>`;
+    const variablesCSS = `
+body {
+  --md-primary-color: ${primaryColor};
+  --md-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --md-font-size: 16px;
+  --background: 0 0% 100%;
+  --foreground: 0 0% 3.9%;
+  --blockquote-background: #f7f7f7;
+}
+    `.trim();
 
-    // 2. 将样式合并到 HTML 内部
-    element.innerHTML = styleBlock + element.innerHTML;
+    let fullThemeCSS = variablesCSS + '\n\n' + cleanThemeCSS;
+    // 将 CSS 变量和 calc 表达式静态化处理，避免微信无法解析
+    fullThemeCSS = processCSS(fullThemeCSS);
 
-    // 3. 使用 Juice 合并样式为内联样式
-    let inlined = juice(element.innerHTML, {
+    const styleBlock = `<style>${fullThemeCSS}</style><style>${hljsCSS}</style>`;
+
+    // 3. 将样式合并到内存中的克隆节点
+    clone.innerHTML = styleBlock + clone.innerHTML;
+
+    // 4. 使用 Juice 合并样式为内联样式
+    let inlined = juice(clone.innerHTML, {
       inlinePseudoElements: true,
       preserveImportant: true,
       resolveCSSVariables: false,
     });
 
-    // 4. 处理嵌套列表 HTML 结构
+    // 5. 处理嵌套列表 HTML 结构
     inlined = modifyHtmlStructure(inlined);
 
-    element.innerHTML = inlined;
+    clone.innerHTML = inlined;
 
-    // 5. 处理样式和颜色变量替换
-    element.innerHTML = element.innerHTML
+    // 6. 处理样式和颜色变量替换
+    clone.innerHTML = clone.innerHTML
       .replace(/([^-])top:(.*?)em/g, '$1transform: translateY($2em)')
       .replace(/hsl\(var\(--foreground\)\)/g, '#3f3f3f')
       .replace(/var\(--blockquote-background\)/g, '#f7f7f7')
@@ -139,17 +156,17 @@ export async function copyHtmlToClipboardWithJuice(
         '<span class="edgeLabel"$1>$2</span>'
       );
 
-    // 6. 处理图片自适应大小
-    solveWeChatImage(element);
+    // 7. 处理图片自适应大小
+    solveWeChatImage(clone);
 
-    // 7. 添加空白节点，兼容 SVG 复制
+    // 8. 添加空白节点，兼容 SVG 复制
     const beforeNode = createEmptyNode();
     const afterNode = createEmptyNode();
-    element.insertBefore(beforeNode, element.firstChild);
-    element.appendChild(afterNode);
+    clone.insertBefore(beforeNode, clone.firstChild);
+    clone.appendChild(afterNode);
 
-    // 8. 兼容 Mermaid / SVG 图表
-    const nodes = element.querySelectorAll('.nodeLabel');
+    // 9. 兼容 Mermaid / SVG 图表
+    const nodes = clone.querySelectorAll('.nodeLabel');
     nodes.forEach((node) => {
       const parent = node.parentElement!;
       const xmlns = parent.getAttribute('xmlns')!;
@@ -165,13 +182,13 @@ export async function copyHtmlToClipboardWithJuice(
     });
 
     // fix: mermaid 部分文本颜色被 stroke 覆盖
-    element.innerHTML = element.innerHTML.replace(
+    clone.innerHTML = clone.innerHTML.replace(
       /<tspan([^>]*)>/g,
       '<tspan$1 style="fill: #333333 !important; color: #333333 !important; stroke: none !important;">'
     );
 
     // fix: infographic-diagram 兼容
-    element.querySelectorAll('.infographic-diagram').forEach((diagram) => {
+    clone.querySelectorAll('.infographic-diagram').forEach((diagram) => {
       diagram.querySelectorAll('text').forEach((textElem) => {
         const dominantBaseline = textElem.getAttribute('dominant-baseline');
         const variantMap = {
@@ -193,16 +210,13 @@ export async function copyHtmlToClipboardWithJuice(
       });
     });
 
-    const finalHtml = element.innerHTML;
+    const finalHtml = clone.innerHTML;
 
-    // 9. 写入剪贴板
+    // 10. 写入剪贴板
     const success = await copyHtmlToClipboard(finalHtml, originalText);
     return success;
   } catch (err) {
     console.error('Juiced copy rich text failed:', err);
     return false;
-  } finally {
-    // 10. 恢复预览区的原始 innerHTML
-    element.innerHTML = originalHtml;
   }
 }

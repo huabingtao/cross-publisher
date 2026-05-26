@@ -276,7 +276,7 @@ export function compileSimpleMarkdown(markdown: string): string {
 // 将 Markdown 按分页符 (---) 拆分成幻灯片数组
 export function splitIntoSlides(markdown: string): string[] {
   if (!markdown) return [];
-  const separatorRegex = /\r?\n\s*(?:---|===|\*\*\*|___)\s*\r?\n/g;
+  const separatorRegex = /\r?\n[ \t]*(?:---|===|\*\*\*|___)[ \t]*\r?\n/g;
   return markdown
     .split(separatorRegex)
     .map(slide => slide.trim())

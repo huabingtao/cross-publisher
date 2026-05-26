@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { compileMarkdownToWechat } from '../utils/markdown';
 import { copyHtmlToClipboardWithJuice } from '../utils/clipboard';
 import { wechatThemes, mapThemeId, baseCSSContent } from '../themes/wechatThemes';
-import { wrapCSSWithScope, themeInjector } from '../utils/themeManager';
-import { Clipboard, Check, Sparkles } from 'lucide-react';
+import { wrapCSSWithScope, themeInjector, processCSS } from '../utils/themeManager';
+import { Clipboard, Check } from 'lucide-react';
+import { EmptyState } from './EmptyState';
 
 interface WeChatPreviewProps {
   content: string;
@@ -24,13 +25,26 @@ export function WeChatPreview({ content, themeId, onThemeChange }: WeChatPreview
   // 当主题发生变化时，动态注入该主题对应的作用域 CSS
   useEffect(() => {
     const theme = wechatThemes.find(t => t.id === mappedThemeId) || wechatThemes[0];
+    const variablesCSS = `
+.wechat-preview-container {
+  --md-primary-color: ${theme.primaryColor};
+  --md-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --md-font-size: 16px;
+  --background: 0 0% 100%;
+  --foreground: 0 0% 3.9%;
+  --blockquote-background: #f7f7f7;
+}
+    `.trim();
+
     const fullCSS = baseCSSContent + '\n' + theme.css;
-    const scopedCSS = wrapCSSWithScope(fullCSS, '.wechat-preview-container');
-    themeInjector.inject(scopedCSS);
+    const scopedCSS = variablesCSS + '\n\n' + wrapCSSWithScope(fullCSS, '.wechat-preview-container');
+    themeInjector.inject(processCSS(scopedCSS));
   }, [mappedThemeId]);
 
+  const isContentEmpty = !content || content.trim().length === 0;
+
   const handleCopy = async () => {
-    if (!previewRef.current) return;
+    if (!previewRef.current || isContentEmpty) return;
 
     const theme = wechatThemes.find(t => t.id === mappedThemeId) || wechatThemes[0];
     const fullCSS = baseCSSContent + '\n' + theme.css;
@@ -73,9 +87,12 @@ export function WeChatPreview({ content, themeId, onThemeChange }: WeChatPreview
         {/* 复制按钮 */}
         <button
           onClick={handleCopy}
+          disabled={copied || isContentEmpty}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm ${
             copied
               ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+              : isContentEmpty
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300'
               : 'bg-indigo-600 hover:bg-indigo-700 text-white'
           }`}
         >
@@ -93,20 +110,18 @@ export function WeChatPreview({ content, themeId, onThemeChange }: WeChatPreview
         </button>
       </div>
 
-      {/* 提示条 */}
-      <div className="flex items-center gap-1 px-4 py-2 bg-indigo-50 border-b border-indigo-100 text-xxs text-indigo-700 font-medium select-none">
-        <Sparkles className="w-3 h-3 text-indigo-500 shrink-0" />
-        <span>复制成功后，直接在微信公众号后台编辑框内进行粘贴 (Ctrl+V) 即可完整保留格式！</span>
-      </div>
-
       {/* 预览展示区 */}
-      <div className="flex-1 p-6 overflow-y-auto bg-gray-50/50">
-        <div 
-          ref={previewRef}
-          className="wechat-preview-container bg-white p-8 rounded-lg shadow-sm border border-gray-100 min-h-full max-w-[677px] mx-auto select-text"
-          style={{ wordBreak: 'break-all' }}
-          dangerouslySetInnerHTML={{ __html: compiledHtml }}
-        />
+      <div className={`wechat-preview-scroll-container flex-1 p-6 overflow-y-auto bg-gray-50/50 ${isContentEmpty ? 'flex flex-col justify-center' : ''}`}>
+        {isContentEmpty ? (
+          <EmptyState />
+        ) : (
+          <div 
+            ref={previewRef}
+            className="wechat-preview-container bg-white p-5 rounded-lg shadow-sm border border-gray-100 min-h-full max-w-[375px] w-full mx-auto select-text"
+            style={{ wordBreak: 'break-all' }}
+            dangerouslySetInnerHTML={{ __html: compiledHtml }}
+          />
+        )}
       </div>
     </div>
   );

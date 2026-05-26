@@ -1,65 +1,63 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Editor } from './components/Editor';
 import { WeChatPreview } from './components/WeChatPreview';
 import { CardPreview } from './components/CardPreview';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useEnvironment } from './hooks/useEnvironment';
 import { splitIntoSlides } from './utils/markdown';
-import { BookOpen, Share2, PenTool, Eye, Smartphone } from 'lucide-react';
+import { BookOpen, Share2, PenTool, Eye, Image } from 'lucide-react';
 
-const DEFAULT_CONTENT = `# 🚀 欢迎使用多平台发布中心！
-这是一个专门为您定制的 **一站式多平台内容排版与卡片工具**。
-
-在这里，您可以只写一篇 Markdown 稿件，然后自动适配并分发到：
-1. **微信公众号** (极致简约排版，一键复制粘贴)
-2. **小红书图文** (利用水平分割线自动转化为高清卡片幻灯片)
-3. **抖音图文** (自动适配 9:16 满屏高清卡片)
-
----
-# 📸 如何生成小红书/抖音卡片？
-在段落之间加入三个减号「\`---\`」作为分页符，系统就会自动为你生成多张精美图片。
-
-*   **实时预览**：在右侧小红书/抖音页签查看最终生成的卡片样式。
-*   **风格控制**：在右侧控制栏一键切换“马卡龙粉紫”、“极简杂志”、“极客暗黑”等多种精美模板。
-*   **一键打包**：点击右上角“下载图片包”，瞬间在前端生成所有高清 PNG 并压缩成 zip 下载。
-
----
-# 📝 微信公众号排版指南
-如果想发布到微信公众号，您需要：
-
-1. 在右侧切换到 **“公众号”** 标签页。
-2. 选取心仪的排版主题（如清新绿、雅致黄、科技蓝）。
-3. 点击右上方 **“一键复制到公众号”**。
-4. 打开公众号编辑后台，直接进行粘贴 (\`Ctrl + V\` 或 \`Cmd + V\`)。
-5. 完美保留所有字体颜色、间距、引用框和加粗样式！
-`;
-
-const DEFAULT_AUTHOR = {
-  name: '自媒体大咖',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
-};
+import defaultMarkdownContent from './assets/example/markdown.md?raw';
 
 function App() {
-  const [content, setContent] = useLocalStorage<string>('publisher_content_v1', DEFAULT_CONTENT);
+  const [content, setContent] = useLocalStorage<string>('publisher_content_v1', defaultMarkdownContent);
   const [wechatThemeId, setWechatThemeId] = useLocalStorage<string>('wechat_theme_id_v1', 'default');
   const [xhsThemeId, setXhsThemeId] = useLocalStorage<string>('xhs_theme_id_v1', 'gradient-pink');
-  const [authorInfo, setAuthorInfo] = useLocalStorage<{ name: string; avatar: string }>('author_info_v1', DEFAULT_AUTHOR);
   
-  // 核心平台状态: 'wechat' | 'xhs' | 'douyin'
-  const [activePlatform, setActivePlatform] = useState<'wechat' | 'xhs' | 'douyin'>('wechat');
+  // 核心平台状态: 'wechat' | 'xhs'
+  const [activePlatform, setActivePlatform] = useState<'wechat' | 'xhs'>('wechat');
 
   // 移动端/微信小程序 WebView 特有状态: 'edit' | 'preview' (在手机上分屏不便，采用底部 Tab 切换)
   const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit');
 
   const { isPc, isWechatMini, isMobile } = useEnvironment();
-  
+
+  // 高性能、防闪烁的 DOM 级同步滚动 (仅在 PC 端的微信公众号 tab 激活时生效)
+  useEffect(() => {
+    if (!isPc || activePlatform !== 'wechat') return;
+
+    // 延迟一小段时间以确保 React DOM 节点渲染就位
+    const timer = setTimeout(() => {
+      const textarea = document.querySelector('.markdown-editor-textarea') as HTMLTextAreaElement;
+      const previewContainer = document.querySelector('.wechat-preview-scroll-container') as HTMLDivElement;
+
+      if (!textarea || !previewContainer) return;
+
+      const handleScroll = () => {
+        const totalScrollHeight = textarea.scrollHeight - textarea.clientHeight;
+        if (totalScrollHeight > 0) {
+          const percentage = textarea.scrollTop / totalScrollHeight;
+          const targetScrollHeight = previewContainer.scrollHeight - previewContainer.clientHeight;
+          previewContainer.scrollTop = percentage * targetScrollHeight;
+        }
+      };
+
+      textarea.addEventListener('scroll', handleScroll, { passive: true });
+      
+      // 初始做一次同步
+      handleScroll();
+
+      return () => {
+        textarea.removeEventListener('scroll', handleScroll);
+      };
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [activePlatform, isPc]);
+
   // 解析获取卡片幻灯片列表
   const slides = splitIntoSlides(content);
 
-  // 统一平台切换逻辑
-  const handlePlatformChange = (platform: 'xhs' | 'douyin') => {
-    setActivePlatform(platform);
-  };
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col font-sans select-none text-gray-800 overflow-hidden">
@@ -124,17 +122,8 @@ function App() {
                   activePlatform === 'xhs' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <Share2 className="w-4 h-4" />
-                <span>小红书图文</span>
-              </button>
-              <button
-                onClick={() => setActivePlatform('douyin')}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  activePlatform === 'douyin' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Smartphone className="w-4 h-4" />
-                <span>抖音图文</span>
+                <Image className="w-4 h-4" />
+                <span>图文</span>
               </button>
             </div>
 
@@ -151,10 +140,6 @@ function App() {
                   slides={slides}
                   themeId={xhsThemeId}
                   onThemeChange={setXhsThemeId}
-                  authorInfo={authorInfo}
-                  onAuthorChange={setAuthorInfo}
-                  activePlatform={activePlatform === 'douyin' ? 'douyin' : 'xhs'}
-                  onPlatformChange={handlePlatformChange}
                 />
               )}
             </div>
@@ -181,15 +166,7 @@ function App() {
                   activePlatform === 'xhs' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
                 }`}
               >
-                小红书卡片
-              </button>
-              <button
-                onClick={() => setActivePlatform('douyin')}
-                className={`px-3 py-1 rounded-full text-xxs font-bold shrink-0 ${
-                  activePlatform === 'douyin' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
-                }`}
-              >
-                抖音卡片
+                图文卡片
               </button>
             </div>
           )}
@@ -209,10 +186,6 @@ function App() {
                 slides={slides}
                 themeId={xhsThemeId}
                 onThemeChange={setXhsThemeId}
-                authorInfo={authorInfo}
-                onAuthorChange={setAuthorInfo}
-                activePlatform={activePlatform === 'douyin' ? 'douyin' : 'xhs'}
-                onPlatformChange={handlePlatformChange}
               />
             )}
           </div>

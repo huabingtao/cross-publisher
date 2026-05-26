@@ -25,7 +25,7 @@ export function Editor({ content, onChange }: EditorProps) {
 
       {/* 编辑区域 */}
       <textarea
-        className="flex-1 w-full p-6 resize-none font-mono text-sm leading-relaxed text-gray-800 focus:outline-none focus:ring-0 placeholder-gray-400 bg-white"
+        className="markdown-editor-textarea flex-1 w-full p-6 resize-none font-mono text-sm leading-relaxed text-gray-800 focus:outline-none focus:ring-0 placeholder-gray-400 bg-white"
         value={content}
         onChange={(e) => onChange(e.target.value)}
         placeholder={`在此处输入 Markdown 格式的文章...
