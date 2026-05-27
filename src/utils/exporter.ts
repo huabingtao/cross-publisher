@@ -69,6 +69,10 @@ export async function exportAllCards(
       const cardElement = document.getElementById(`${elementIdPrefix}-${i}`);
       if (!cardElement) continue;
 
+      // 动态计算缩放比例，将预览的实际宽度放大至正好为 1200px
+      const elementWidth = cardElement.offsetWidth || 384;
+      const targetScale = 1200 / elementWidth;
+
       // 调用进度回调
       if (onProgress) {
         onProgress(i + 1, slidesCount);
@@ -76,13 +80,28 @@ export async function exportAllCards(
 
       // 将指定 DOM 节点转化为 Canvas
       const canvas = await html2canvas(cardElement, {
-        scale: 2,              // 放大2倍获取高清图片 (1200x1600px -> 2400x3200px)
+        scale: targetScale,    // 动态缩放以获得精准的 1200px 宽度大图，保持文字断行、图片比例与预览 100% 一致
         useCORS: true,         // 支持加载跨域网络图片（例如微信头像）
         backgroundColor: null,  // 支持透明背景
         logging: false,
         onclone: (clonedDoc) => {
           const clonedElement = clonedDoc.getElementById(`${elementIdPrefix}-${i}`);
           if (clonedElement) {
+            // 移除预览特有的圆角和投影阴影，导出干净的直角原图
+            clonedElement.classList.remove('rounded-2xl', 'shadow-md');
+            clonedElement.style.borderRadius = '0';
+            clonedElement.style.boxShadow = 'none';
+
+            // 只有当主题没有自定义边框时，才移除默认的预览浅灰色边框
+            const hasCustomBorder = clonedElement.className.includes('border-') && !clonedElement.className.includes('border-gray-100');
+            if (!hasCustomBorder) {
+              clonedElement.classList.remove('border', 'border-gray-100');
+              clonedElement.style.border = 'none';
+            } else {
+              // 移除预览浅灰色边框类，保留主题的自定义边框类
+              clonedElement.classList.remove('border-gray-100');
+            }
+
             const allElements = [clonedElement, ...Array.from(clonedElement.getElementsByTagName('*'))] as HTMLElement[];
             allElements.forEach((el) => {
               const win = el.ownerDocument?.defaultView || window;

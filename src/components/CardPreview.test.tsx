@@ -39,7 +39,7 @@ describe('CardPreview Component', () => {
     });
 
     expect(exportAllCards).toHaveBeenCalledTimes(1);
-    expect(exportAllCards).toHaveBeenCalledWith(2, 'xhs-card-render', expect.any(Function));
+    expect(exportAllCards).toHaveBeenCalledWith(2, 'xhs-card-preview', expect.any(Function));
   });
 
   it('should trigger onThemeChange when theme dropdown is changed', () => {
