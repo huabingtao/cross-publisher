@@ -14,14 +14,14 @@ describe('CardPreview Component', () => {
   });
 
   it('should render theme dropdown and download button', () => {
-    render(<CardPreview slides={['Slide 1']} themeId="gradient-pink" onThemeChange={vi.fn()} />);
+    render(<CardPreview slides={['Slide 1']} themeId="default" onThemeChange={vi.fn()} />);
 
-    expect(screen.getByText('卡片风格:')).toBeInTheDocument();
+    expect(screen.getByText('排版主题:')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '下载图片包 (ZIP)' })).toBeInTheDocument();
   });
 
   it('should render EmptyState when slides is empty', () => {
-    render(<CardPreview slides={[]} themeId="gradient-pink" onThemeChange={vi.fn()} />);
+    render(<CardPreview slides={[]} themeId="default" onThemeChange={vi.fn()} />);
 
     expect(screen.getByText('排版引擎就绪，静候佳作')).toBeInTheDocument();
     const downloadButton = screen.getByRole('button', { name: '下载图片包 (ZIP)' });
@@ -29,7 +29,7 @@ describe('CardPreview Component', () => {
   });
 
   it('should call exportAllCards when download button is clicked', async () => {
-    render(<CardPreview slides={['Slide 1', 'Slide 2']} themeId="gradient-pink" onThemeChange={vi.fn()} />);
+    render(<CardPreview slides={['Slide 1', 'Slide 2']} themeId="default" onThemeChange={vi.fn()} />);
 
     const downloadButton = screen.getByRole('button', { name: '下载图片包 (ZIP)' });
     expect(downloadButton).not.toBeDisabled();
@@ -44,12 +44,12 @@ describe('CardPreview Component', () => {
 
   it('should trigger onThemeChange when theme dropdown is changed', () => {
     const handleThemeChange = vi.fn();
-    render(<CardPreview slides={['Slide 1']} themeId="gradient-pink" onThemeChange={handleThemeChange} />);
+    render(<CardPreview slides={['Slide 1']} themeId="default" onThemeChange={handleThemeChange} />);
 
     const select = screen.getByRole('combobox');
-    fireEvent.change(select, { target: { value: 'tech-dark' } });
+    fireEvent.change(select, { target: { value: 'default' } });
 
     expect(handleThemeChange).toHaveBeenCalledTimes(1);
-    expect(handleThemeChange).toHaveBeenCalledWith('tech-dark');
+    expect(handleThemeChange).toHaveBeenCalledWith('default');
   });
 });

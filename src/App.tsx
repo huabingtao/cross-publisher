@@ -6,13 +6,14 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useEnvironment } from './hooks/useEnvironment';
 import { splitIntoSlides } from './utils/markdown';
 import { BookOpen, Share2, PenTool, Eye, Image } from 'lucide-react';
+import { wechatThemes, mapThemeId, baseCSSContent } from './themes/wechatThemes';
+import { wrapCSSWithScope, themeInjector, processCSS } from './utils/themeManager';
 
 import defaultMarkdownContent from './assets/example/markdown.md?raw';
 
 function App() {
   const [content, setContent] = useLocalStorage<string>('publisher_content_v1', defaultMarkdownContent);
   const [wechatThemeId, setWechatThemeId] = useLocalStorage<string>('wechat_theme_id_v1', 'default');
-  const [xhsThemeId, setXhsThemeId] = useLocalStorage<string>('xhs_theme_id_v1', 'gradient-pink');
   
   // 核心平台状态: 'wechat' | 'xhs'
   const [activePlatform, setActivePlatform] = useState<'wechat' | 'xhs'>('wechat');
@@ -21,6 +22,27 @@ function App() {
   const [mobileTab, setMobileTab] = useState<'edit' | 'preview'>('edit');
 
   const { isPc, isWechatMini, isMobile } = useEnvironment();
+
+  const mappedThemeId = mapThemeId(wechatThemeId);
+
+  // 动态注入公众号主题作用域 CSS，使公众号预览和图文卡片预览共享排版样式
+  useEffect(() => {
+    const theme = wechatThemes.find(t => t.id === mappedThemeId) || wechatThemes[0];
+    const variablesCSS = `
+.wechat-preview-container {
+  --md-primary-color: ${theme.primaryColor};
+  --md-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --md-font-size: 16px;
+  --background: 0 0% 100%;
+  --foreground: 0 0% 3.9%;
+  --blockquote-background: #f7f7f7;
+}
+    `.trim();
+
+    const fullCSS = baseCSSContent + '\n' + theme.css;
+    const scopedCSS = variablesCSS + '\n\n' + wrapCSSWithScope(fullCSS, '.wechat-preview-container');
+    themeInjector.inject(processCSS(scopedCSS));
+  }, [mappedThemeId]);
 
   // 高性能、防闪烁的 DOM 级同步滚动 (仅在 PC 端的微信公众号 tab 激活时生效)
   useEffect(() => {
@@ -138,8 +160,8 @@ function App() {
               ) : (
                 <CardPreview
                   slides={slides}
-                  themeId={xhsThemeId}
-                  onThemeChange={setXhsThemeId}
+                  themeId={wechatThemeId}
+                  onThemeChange={setWechatThemeId}
                 />
               )}
             </div>
@@ -184,8 +206,8 @@ function App() {
             ) : (
               <CardPreview
                 slides={slides}
-                themeId={xhsThemeId}
-                onThemeChange={setXhsThemeId}
+                themeId={wechatThemeId}
+                onThemeChange={setWechatThemeId}
               />
             )}
           </div>

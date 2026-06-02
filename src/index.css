@@ -1,5 +1,5 @@
 @import "tailwindcss";
-
+@plugin "@tailwindcss/typography";
 /* 可以在这里添加一些项目的全局基本样式覆盖 */
 body {
   margin: 0;

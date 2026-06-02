@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { compileMarkdownToWechat } from '../utils/markdown';
 import { copyHtmlToClipboardWithJuice } from '../utils/clipboard';
 import { wechatThemes, mapThemeId, baseCSSContent } from '../themes/wechatThemes';
-import { wrapCSSWithScope, themeInjector, processCSS } from '../utils/themeManager';
 import { Clipboard, Check } from 'lucide-react';
 import { EmptyState } from './EmptyState';
 
@@ -21,25 +20,6 @@ export function WeChatPreview({ content, themeId, onThemeChange }: WeChatPreview
 
   // 编译获取微信预览的 HTML (包含基础类名)
   const compiledHtml = compileMarkdownToWechat(content, mappedThemeId);
-
-  // 当主题发生变化时，动态注入该主题对应的作用域 CSS
-  useEffect(() => {
-    const theme = wechatThemes.find(t => t.id === mappedThemeId) || wechatThemes[0];
-    const variablesCSS = `
-.wechat-preview-container {
-  --md-primary-color: ${theme.primaryColor};
-  --md-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --md-font-size: 16px;
-  --background: 0 0% 100%;
-  --foreground: 0 0% 3.9%;
-  --blockquote-background: #f7f7f7;
-}
-    `.trim();
-
-    const fullCSS = baseCSSContent + '\n' + theme.css;
-    const scopedCSS = variablesCSS + '\n\n' + wrapCSSWithScope(fullCSS, '.wechat-preview-container');
-    themeInjector.inject(processCSS(scopedCSS));
-  }, [mappedThemeId]);
 
   const isContentEmpty = !content || content.trim().length === 0;
 

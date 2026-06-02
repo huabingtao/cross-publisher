@@ -1,49 +1,46 @@
-import html2canvas from 'html2canvas';
+import { domToJpeg, waitUntilLoad } from 'modern-screenshot';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
-let memoCanvas: HTMLCanvasElement | null = null;
-let memoCanvasCtx: CanvasRenderingContext2D | null = null;
-
-/**
- * 使用 Canvas 2D 绘图上下文将任意浏览器支持的 CSS 颜色字符串（如 oklch, oklab, color, hwb 等）转换为标准的 rgba 格式。
- * 这样做可以保证即使在广色域浏览器（会将 fillStyle 序列化为 color() 或 oklch()）上，也能通过 getImageData 输出 html2canvas 兼容的 rgba(...)。
- */
-function convertToRgb(colorStr: string): string {
-  if (!colorStr) return '';
-  if (!memoCanvasCtx) {
-    memoCanvas = document.createElement('canvas');
-    memoCanvas.width = 1;
-    memoCanvas.height = 1;
-    memoCanvasCtx = memoCanvas.getContext('2d', { willReadFrequently: true });
+// 辅助函数：通过代理将图片 URL 转换为 Base64，带有主要代理（corsproxy.io）和备用代理（allorigins.win）以及直接退回策略
+async function toDataURL(url: string): Promise<string> {
+  // 仅对远程链接使用代理
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return url;
   }
-  if (memoCanvasCtx) {
-    memoCanvasCtx.clearRect(0, 0, 1, 1);
-    memoCanvasCtx.fillStyle = colorStr;
-    memoCanvasCtx.fillRect(0, 0, 1, 1);
-    const data = memoCanvasCtx.getImageData(0, 0, 1, 1).data;
-    const r = data[0];
-    const g = data[1];
-    const b = data[2];
-    const a = data[3] / 255;
-    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  
+  // 1. 尝试使用 corsproxy.io 代理（速度最快）
+  try {
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    const response = await fetch(proxyUrl);
+    if (!response.ok) throw new Error(`HTTP status ${response.status}`);
+    const blob = await response.blob();
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn(`corsproxy.io failed for ${url}, trying allorigins.win...`, e);
+    
+    // 2. 尝试使用备用代理 allorigins.win
+    try {
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error(`HTTP status ${response.status}`);
+      const blob = await response.blob();
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (err2) {
+      console.error(`All CORS proxies failed for ${url}. Falling back to direct URL.`, err2);
+      return url;
+    }
   }
-  return colorStr;
-}
-
-/**
- * 转换 CSS 样式值中的所有现代颜色函数，并移除渐变中的插值空间标识（如 in oklab,）
- */
-function replaceColorFunctions(styleVal: string): string {
-  if (!styleVal) return '';
-  // 匹配 oklch(), oklab(), color(), hwb(), lab(), lch() 等现代颜色函数
-  let result = styleVal.replace(/(oklch|oklab|color|hwb|lab|lch)\([^)]+\)/g, (match) => {
-    return convertToRgb(match);
-  });
-  result = result
-    .replace(/in oklab,\s*/g, '')
-    .replace(/in oklch,\s*/g, '');
-  return result;
 }
 
 /**
@@ -78,80 +75,67 @@ export async function exportAllCards(
         onProgress(i + 1, slidesCount);
       }
 
-      // 将指定 DOM 节点转化为 Canvas
-      const canvas = await html2canvas(cardElement, {
-        scale: targetScale,    // 动态缩放以获得精准的 1200px 宽度大图，保持文字断行、图片比例与预览 100% 一致
-        useCORS: true,         // 支持加载跨域网络图片（例如微信头像）
-        backgroundColor: null,  // 支持透明背景
-        logging: false,
-        onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.getElementById(`${elementIdPrefix}-${i}`);
-          if (clonedElement) {
-            // 移除预览特有的圆角和投影阴影，导出干净的直角原图
-            clonedElement.classList.remove('rounded-2xl', 'shadow-md');
-            clonedElement.style.borderRadius = '0';
-            clonedElement.style.boxShadow = 'none';
+      // 克隆 DOM 节点到视口外以避免画面闪烁，并在此克隆体上修改导出样式
+      const clonedElement = cardElement.cloneNode(true) as HTMLElement;
+      clonedElement.style.position = 'fixed';
+      clonedElement.style.top = '-9999px';
+      clonedElement.style.left = '-9999px';
+      clonedElement.style.width = `${elementWidth}px`;
+      clonedElement.style.height = `${cardElement.offsetHeight}px`;
 
-            // 只有当主题没有自定义边框时，才移除默认的预览浅灰色边框
-            const hasCustomBorder = clonedElement.className.includes('border-') && !clonedElement.className.includes('border-gray-100');
-            if (!hasCustomBorder) {
-              clonedElement.classList.remove('border', 'border-gray-100');
-              clonedElement.style.border = 'none';
-            } else {
-              // 移除预览浅灰色边框类，保留主题的自定义边框类
-              clonedElement.classList.remove('border-gray-100');
-            }
+      // 移除预览特有的圆角 and 投影阴影，导出干净的直角原图
+      clonedElement.classList.remove('rounded-2xl', 'shadow-md');
+      clonedElement.style.borderRadius = '0';
+      clonedElement.style.boxShadow = 'none';
 
-            const allElements = [clonedElement, ...Array.from(clonedElement.getElementsByTagName('*'))] as HTMLElement[];
-            allElements.forEach((el) => {
-              const win = el.ownerDocument?.defaultView || window;
-              const style = win.getComputedStyle(el);
+      // 只有当主题没有自定义边框时，才移除默认的预览浅灰色边框
+      const hasCustomBorder = clonedElement.className.includes('border-') && !clonedElement.className.includes('border-gray-100');
+      if (!hasCustomBorder) {
+        clonedElement.classList.remove('border', 'border-gray-100');
+        clonedElement.style.border = 'none';
+      } else {
+        // 移除预览浅灰色边框类，保留主题的自定义边框类
+        clonedElement.classList.remove('border-gray-100');
+      }
 
-              // 检查并替换所有可能使用到现代颜色的 CSS 属性
-              const colorProps = [
-                'color',
-                'backgroundColor',
-                'borderColor',
-                'borderTopColor',
-                'borderRightColor',
-                'borderBottomColor',
-                'borderLeftColor',
-                'backgroundImage',
-                'background',
-                'boxShadow',
-                'textShadow',
-                'outlineColor',
-                'fill',
-                'stroke'
-              ];
-
-              colorProps.forEach((prop) => {
-                const val = (style as any)[prop];
-                if (val && (
-                  val.includes('oklch') ||
-                  val.includes('oklab') ||
-                  val.includes('color(') ||
-                  val.includes('hwb(') ||
-                  val.includes('lab(') ||
-                  val.includes('lch(')
-                )) {
-                  const converted = replaceColorFunctions(val);
-                  (el.style as any)[prop] = converted;
-                }
-              });
-            });
+      // 找到所有的 img 标签，并并行将它们转换为 Base64 格式，规避跨域限制且不需要在截图时发出网络请求
+      const imgs = Array.from(clonedElement.querySelectorAll('img'));
+      await Promise.all(
+        imgs.map(async (img) => {
+          const src = img.getAttribute('src');
+          if (src) {
+            const dataUrl = await toDataURL(src);
+            img.setAttribute('src', dataUrl);
+            img.removeAttribute('crossorigin');
           }
-        }
-      });
+        })
+      );
 
-      // 将 canvas 转为 png 格式的 Blob
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), 'image/png');
-      });
+      document.body.appendChild(clonedElement);
+
+      let blob: Blob | null = null;
+      try {
+        // 1. 等待克隆 DOM 树中的图片和字体等全部媒体资源加载完毕
+        await waitUntilLoad(clonedElement);
+
+        // 2. 使用专门的 domToJpeg 方法导出 JPEG 数据 URL
+        const dataUrl = await domToJpeg(clonedElement, {
+          scale: targetScale,
+          backgroundColor: '#ffffff',
+          quality: 0.95,
+        });
+
+        // 3. 将数据 URL 转换为 Blob 文件
+        blob = await fetch(dataUrl).then((res) => res.blob());
+      } catch (err) {
+        console.error(`导出第 ${i + 1} 页卡片失败:`, err);
+      } finally {
+        document.body.removeChild(clonedElement);
+      }
 
       if (blob) {
         // 按照页码顺序加入压缩包
-        folder.file(`card-slide-${i + 1}.png`, blob);
+        folder.file(`card-slide-${i + 1}.jpg`, blob);
       }
     }
 
