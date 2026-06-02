@@ -108,11 +108,6 @@ function App() {
               手机网页模式
             </span>
           )}
-          {isPc && (
-            <span className="bg-indigo-50 text-indigo-600 border border-indigo-250 px-2 py-0.5 rounded-full text-[10px] font-bold">
-              PC 桌面专业版
-            </span>
-          )}
         </div>
       </header>
 
