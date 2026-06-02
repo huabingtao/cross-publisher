@@ -2,14 +2,33 @@ import { domToJpeg, waitUntilLoad } from 'modern-screenshot';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
-// 辅助函数：通过代理将图片 URL 转换为 Base64，带有主要代理（corsproxy.io）和备用代理（allorigins.win）以及直接退回策略
+// 辅助函数：将图片 URL 转换为 Base64
+// 1. 优先尝试直接 fetch（针对阿里云 OSS 等本身已开启 CORS 的域名，速度最快且最安全）
+// 2. 失败后退回到主要代理（corsproxy.io）
+// 3. 再次失败退回到备选代理（allorigins.win）
+// 4. 均失败则退回到直接 URL 引用
 async function toDataURL(url: string): Promise<string> {
-  // 仅对远程链接使用代理
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     return url;
   }
   
-  // 1. 尝试使用 corsproxy.io 代理（速度最快）
+  // 1. 优先直接 fetch
+  try {
+    const response = await fetch(url);
+    if (response.ok) {
+      const blob = await response.blob();
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (e) {
+    console.warn(`Direct fetch failed for ${url} (possibly CORS blocked), trying proxies...`, e);
+  }
+  
+  // 2. 尝试使用 corsproxy.io 代理
   try {
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
     const response = await fetch(proxyUrl);
@@ -24,7 +43,7 @@ async function toDataURL(url: string): Promise<string> {
   } catch (e) {
     console.warn(`corsproxy.io failed for ${url}, trying allorigins.win...`, e);
     
-    // 2. 尝试使用备用代理 allorigins.win
+    // 3. 尝试使用备用代理 allorigins.win
     try {
       const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
       const response = await fetch(proxyUrl);
