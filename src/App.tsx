@@ -14,7 +14,7 @@ import defaultMarkdownContent from './assets/example/markdown.md?raw';
 function App() {
   const [content, setContent] = useLocalStorage<string>('publisher_content_v1', defaultMarkdownContent);
   const [wechatThemeId, setWechatThemeId] = useLocalStorage<string>('wechat_theme_id_v1', 'default');
-  
+
   // 核心平台状态: 'wechat' | 'xhs'
   const [activePlatform, setActivePlatform] = useState<'wechat' | 'xhs'>('wechat');
 
@@ -65,7 +65,7 @@ function App() {
       };
 
       textarea.addEventListener('scroll', handleScroll, { passive: true });
-      
+
       // 初始做一次同步
       handleScroll();
 
@@ -83,7 +83,7 @@ function App() {
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col font-sans select-none text-gray-800 overflow-hidden">
-      
+
       {/* 头部导航导航栏 */}
       <header className="bg-white border-b border-gray-200/80 px-6 py-4 flex justify-between items-center shrink-0 shadow-xs z-10">
         <div className="flex items-center gap-3">
@@ -121,23 +121,21 @@ function App() {
 
           {/* 右侧预览区 */}
           <section className="flex-1 h-full flex flex-col min-w-[450px]">
-            
+
             {/* 顶部分类页签 */}
             <div className="flex bg-gray-200/60 p-1 rounded-xl mb-4 self-start">
               <button
                 onClick={() => setActivePlatform('wechat')}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  activePlatform === 'wechat' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activePlatform === 'wechat' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 <BookOpen className="w-4 h-4" />
                 <span>微信公众号</span>
               </button>
               <button
                 onClick={() => setActivePlatform('xhs')}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  activePlatform === 'xhs' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activePlatform === 'xhs' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 <Image className="w-4 h-4" />
                 <span>图文</span>
@@ -165,23 +163,21 @@ function App() {
       ) : (
         /* 移动端/小程序 WebView 下的布局（单栏，底部Tab切换） */
         <main className="flex-1 flex flex-col overflow-hidden relative">
-          
+
           {/* 移动端预览模式下的平台页签切换 */}
           {mobileTab === 'preview' && (
             <div className="bg-white px-4 py-2 border-b border-gray-100 flex gap-2 shrink-0 overflow-x-auto">
               <button
                 onClick={() => setActivePlatform('wechat')}
-                className={`px-3 py-1 rounded-full text-xxs font-bold shrink-0 ${
-                  activePlatform === 'wechat' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
-                }`}
+                className={`px-3 py-1 rounded-full text-xxs font-bold shrink-0 ${activePlatform === 'wechat' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
+                  }`}
               >
                 公众号排版
               </button>
               <button
                 onClick={() => setActivePlatform('xhs')}
-                className={`px-3 py-1 rounded-full text-xxs font-bold shrink-0 ${
-                  activePlatform === 'xhs' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
-                }`}
+                className={`px-3 py-1 rounded-full text-xxs font-bold shrink-0 ${activePlatform === 'xhs' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'
+                  }`}
               >
                 图文卡片
               </button>
@@ -211,18 +207,16 @@ function App() {
           <footer className="bg-white border-t border-gray-200 px-6 py-2 flex justify-around items-center shrink-0 shadow-lg shadow-gray-200">
             <button
               onClick={() => setMobileTab('edit')}
-              className={`flex flex-col items-center gap-0.5 py-1 ${
-                mobileTab === 'edit' ? 'text-indigo-600' : 'text-gray-400'
-              }`}
+              className={`flex flex-col items-center gap-0.5 py-1 ${mobileTab === 'edit' ? 'text-indigo-600' : 'text-gray-400'
+                }`}
             >
               <PenTool className="w-5 h-5" />
               <span className="text-[10px] font-bold">写作编辑</span>
             </button>
             <button
               onClick={() => setMobileTab('preview')}
-              className={`flex flex-col items-center gap-0.5 py-1 ${
-                mobileTab === 'preview' ? 'text-indigo-600' : 'text-gray-400'
-              }`}
+              className={`flex flex-col items-center gap-0.5 py-1 ${mobileTab === 'preview' ? 'text-indigo-600' : 'text-gray-400'
+                }`}
             >
               <Eye className="w-5 h-5" />
               <span className="text-[10px] font-bold">效果预览</span>
